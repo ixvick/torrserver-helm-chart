@@ -1,0 +1,25 @@
+{{- if .Values.torrentService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "torrserver.fullname" . }}-torrent
+  labels:
+    {{- include "torrserver.labels" . | nindent 4 }}
+  {{- with .Values.torrentService.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.torrentService.type }}
+  ports:
+    - port: {{ .Values.torrentService.port }}
+      targetPort: torrent
+      protocol: TCP
+      name: torrent
+    - port: {{ .Values.torrentService.port }}
+      targetPort: torrent-udp
+      protocol: UDP
+      name: torrent
+  selector:
+    {{- include "torrserver.selectorLabels" . | nindent 4 }}
+{{- end }}

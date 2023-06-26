@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "torrserver.fullname" . }}
+  labels:
+    {{- include "torrserver.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "torrserver.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "torrserver.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "torrserver.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containderPort | default "8090" }}
+              protocol: TCP
+            {{- if .Values.torrentListenPort }}
+            - name: torrent
+              containerPort: {{ .Values.torrentListenPort }}
+              protocol: TCP
+              {{- if not .Values.torrentService.enabled }}
+              hostPort: {{ .Values.torrentListenPort }}
+              {{- end }}
+            - name: torrent-udp
+              containerPort: {{ .Values.torrentListenPort }}
+              protocol: UDP
+              {{- if not .Values.torrentService.enabled }}
+              hostPort: {{ .Values.torrentListenPort }}
+              {{- end }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          command: ["/bin/ash"]
+          args:
+            - -c
+            - >-
+              {{- if .Values.autoloadTorrentsDir }}
+              mkdir -p {{ .Values.autoloadTorrentsDir }};
+              {{- end }}
+              {{- if .Values.databaseDir }}
+              mkdir -p {{ .Values.databaseDir }};
+              {{- end }}
+              {{- if .Values.serverLogFile }}
+              touch {{ .Values.serverLogFile }};
+              {{- end }}
+              {{- if .Values.accessLogFile }}
+              touch {{ .Values.accessLogFile }};
+              {{- end }}
+              exec /usr/bin/torrserver
+              {{- if .Values.serverLogFile }}
+              --logpath {{ .Values.serverLogFile }}
+              {{- end }}
+              {{- if .Values.accessLogFile }}
+              --weblogpath {{ .Values.accessLogFile }}
+              {{- end }}
+              {{- if .Values.readOnlyDB }}
+              --rdb
+              {{- end }}
+              {{- if .Values.enableHTTPAuth }}
+              --httpauth
+              {{- end }}
+              {{- if .Values.dontKill }}
+              --dontkill
+              {{- end }}
+              {{- if .Values.autoloadTorrentsDir }}
+              --torrentsdir {{ .Values.autoloadTorrentsDir }}
+              {{- end }}
+              {{- if .Values.torrentListenPort }}
+              --torrentaddr {{ .Values.torrentListenIP | default "" }}:{{ .Values.torrentListenPort }}
+              {{- end }}
+              {{- if .Values.publicIPv4Addr }}
+              --pubipv4 {{ .Values.publicIPv4Addr }}
+              {{- end }}
+              {{- if and .Values.enableHTTPAuth .Values.enableSearchWithoutAuth }}
+              --searchwa
+              {{- end }}
+              {{- if .Values.databaseDir }}
+              --path {{ .Values.databaseDir }}
+              {{- end }}
+              --port {{ .Values.containderPort | default "8090" }}
+          volumeMounts:
+            - name: torrserver-data
+              mountPath: {{ .Values.storagePath }}
+      volumes:
+        - name: torrserver-data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "torrserver.fullname" .) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}

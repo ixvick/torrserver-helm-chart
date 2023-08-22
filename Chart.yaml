@@ -1,9 +1,9 @@
 apiVersion: v2
 name: torrserver
-appVersion: "matrix.124"
+appVersion: "matrix.125"
 description: A Helm chart for TorrServer, stream torrent to http
 type: application
-version: 0.1.16
+version: 0.1.17
 sources:
   - https://github.com/YouROK/TorrServer
 maintainers:

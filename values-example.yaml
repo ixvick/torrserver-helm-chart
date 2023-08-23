@@ -1,0 +1,42 @@
+---
+enableHTTPAuth: false
+enableSearchWithoutAuth: false
+dontKill: false
+readOnlyDB: false
+publicIPv4Addr: 203.0.113.100
+# torrentListenIP: ""
+torrentListenPort: 32003
+databaseDir: /opt/ts/config
+autoloadTorrentsDir: /opt/ts/torrents
+storagePath: /opt/ts
+# accessLogFile: /opt/ts/access.log
+# serverLogFile: /opt/ts/server.log
+containderPort: 8090
+
+service:
+  type: ClusterIP
+  port: 8080
+  # annotations: []
+
+torrentService:
+  enabled: false
+  type: LoadBalancer
+  port: 32003
+  # annotations: []
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: torrserver-salt123.my-own-personal-domain.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: torrserver-tls
+  #    hosts:
+  #      - torrserver-salt123.my-own-personal-domain.com
+
